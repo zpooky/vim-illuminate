@@ -81,13 +81,35 @@ fun! s:illuminate(...) abort
   call s:remove_illumination()
 
   if exists('g:Illuminate_ftHighlightGroups') && has_key(g:Illuminate_ftHighlightGroups, &filetype)
-    if index(g:Illuminate_ftHighlightGroups[&filetype], synIDattr(synIDtrans(synID(line('.'), col('.'), 1)), 'name')) >= 0
-      call s:match_word(s:get_cur_word())
+    let syn_stack = synstack(line('.'), col('.'))
+    if s:contains_blacklisted(syn_stack) == 0
+      for id in syn_stack
+        let syn_name = synIDattr(id, 'name')
+        if index(g:Illuminate_ftHighlightGroups[&filetype], syn_name) >= 0
+          call s:match_word(s:get_cur_word())
+          break
+        endif
+      endfor
     endif
   else
-    call s:match_word(s:get_cur_word())
+    if s:contains_blacklisted(synstack(line('.'), col('.'))) == 0
+      call s:match_word(s:get_cur_word())
+    endif
   endif
   let s:previous_match = s:get_cur_word()
+endf
+
+fun! s:contains_blacklisted(syn_stack) abort
+  if exists('g:Illuminate_ftHighlightGroupsBlacklist') && has_key(g:Illuminate_ftHighlightGroupsBlacklist, &filetype)
+    for id in a:syn_stack
+      let syn_name = synIDattr(id, 'name')
+      if index(g:Illuminate_ftHighlightGroupsBlacklist[&filetype], syn_name) >= 0
+        return 1
+      endif
+    endfor
+  endif
+
+  return 0
 endf
 
 fun! s:match_word(word) abort
